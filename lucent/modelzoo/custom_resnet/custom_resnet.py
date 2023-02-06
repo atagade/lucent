@@ -9,7 +9,7 @@ from torchvision.models._meta import _IMAGENET_CATEGORIES
 from torchvision.models._utils import _ovewrite_named_param
 from torchvision.models.resnet import ResNet18_Weights
 
-from typing import Any, Callable, List, Optional, Type, Union
+from typing import Any, Callable, List, Optional, Type, Union, Tuple
 
 _COMMON_META = {
     "min_size": (1, 1),
