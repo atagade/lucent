@@ -6,7 +6,7 @@ from torchvision.utils import _log_api_usage_once
 from torchvision.models._api import register_model, Weights, WeightsEnum
 from torchvision.transforms._presets import ImageClassification
 from torchvision.models._meta import _IMAGENET_CATEGORIES
-from torchvision.models._utils import _ovewrite_named_param
+from torchvision.models._utils import handle_legacy_interface, _ovewrite_named_param
 from torchvision.models.resnet import ResNet18_Weights
 
 from typing import Any, Callable, List, Optional, Type, Union, Tuple
@@ -361,9 +361,10 @@ def build_resnet(
 
     return model
 
+@handle_legacy_interface("pretrained", weights=("pretrained", ResNet18_Weights.IMAGENET1K_V1))
 def resnet18(use_linear_modules=False, skip_batchnorm=True):
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    weights = ResNet18_Weights.verify("IMAGENET1K_V1")
+
+    weights = ResNet18_Weights.verify(weights)
     model = build_resnet(BasicBlock, [2, 2, 2, 2], weights=weights, progress=True, use_linear_modules_only=use_linear_modules, skip_batchnorm = skip_batchnorm)
 
     return model
