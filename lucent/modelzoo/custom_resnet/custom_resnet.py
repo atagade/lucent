@@ -361,7 +361,7 @@ def build_resnet(
 
     return model
 
-@handle_legacy_interface("pretrained", weights=("pretrained", ResNet18_Weights.IMAGENET1K_V1))
+@handle_legacy_interface(weights=("pretrained", ResNet18_Weights.IMAGENET1K_V1))
 def resnet18(use_linear_modules=False, skip_batchnorm=True):
 
     weights = ResNet18_Weights.verify(weights)
