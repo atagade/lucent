@@ -79,7 +79,6 @@ class BasicBlock(nn.Module):
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
         use_linear_modules_only: bool = False,
-        skip_batchnorm: bool = False,
     ) -> None:
         super().__init__()
         if norm_layer is None:
@@ -99,7 +98,6 @@ class BasicBlock(nn.Module):
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
         self.stride = stride
-        self.skip_batchnorm = skip_batchnorm
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
@@ -107,10 +105,8 @@ class BasicBlock(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-
         out = self.conv2(out)
-        if not self.skip_batchnorm:
-          out = self.bn2(out)
+        out = self.bn2(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -141,7 +137,6 @@ class Bottleneck(nn.Module):
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
         use_linear_modules_only: bool = False,
-        skip_batchnorm: bool = False,
     ) -> None:
         super().__init__()
         if norm_layer is None:
@@ -162,7 +157,6 @@ class Bottleneck(nn.Module):
           self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
-        self.skip_batchnorm = skip_batchnorm
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
@@ -176,8 +170,7 @@ class Bottleneck(nn.Module):
         out = self.relu(out)
 
         out = self.conv3(out)
-        if not self.skip_batchnorm:
-          out = self.bn3(out)
+        out = self.bn3(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -199,7 +192,7 @@ class ResNet(nn.Module):
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
         use_linear_modules_only: bool = False,
-        skip_batchnorm: bool = False
+        k = 64,
     ) -> None:
         super().__init__()
         _log_api_usage_once(self)
@@ -207,7 +200,7 @@ class ResNet(nn.Module):
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
-        self.inplanes = 64
+        self.inplanes = k
         self.dilation = 1
         if replace_stride_with_dilation is None:
             # each element in the tuple indicates if we should replace
@@ -220,12 +213,7 @@ class ResNet(nn.Module):
             )
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
-        if skip_batchnorm:
-          self.skip_batchnorm = True
-        else:
-          self.skip_batchnorm = False
-          
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)          
         self.bn1 = norm_layer(self.inplanes)
         if use_linear_modules_only:
           self.use_linear_modules_only = True
@@ -286,9 +274,8 @@ class ResNet(nn.Module):
             )
         )
         self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            if i < blocks-1:
-               layers.append(
+
+        layers.append(
                 block(
                     self.inplanes,
                     planes,
@@ -297,45 +284,25 @@ class ResNet(nn.Module):
                     dilation=self.dilation,
                     norm_layer=norm_layer,
                 ))
-            else:
-                layers.append(
-                block(
-                    self.inplanes,
-                    planes,
-                    groups=self.groups,
-                    base_width=self.base_width,
-                    dilation=self.dilation,
-                    norm_layer=norm_layer,
-                    skip_batchnorm = self.skip_batchnorm
-                )
-            )
+
 
         return nn.Sequential(*layers)
 
-    def _forward_impl(self, x: Tensor, layer = None) -> Tensor:
+    def _forward_impl(self, x: Tensor) -> Tensor:
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
 
-        x_1 = self.layer1(x)
-        x_2 = self.layer2(x_1)
-        x_3 = self.layer3(x_2)
-        x_4 = self.layer4(x_3)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
 
-        x = self.avgpool(x_4)
+        x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
-
-        if layer == 'layer1':
-          return x, x_1
-        if layer == 'layer2':
-          return x, x_2
-        if layer == 'layer3':
-          return x, x_3
-        if layer == 'layer4':
-          return x, x_4
 
         return x
 
@@ -348,13 +315,13 @@ def build_resnet(
     weights: Optional[WeightsEnum],
     progress: bool,
     use_linear_modules_only: bool = False,
-    skip_batchnorm = False,
+    k=64,
     **kwargs: Any,
 ) -> ResNet:
     if weights is not None:
         _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
 
-    model = ResNet(block, layers, use_linear_modules_only=use_linear_modules_only, skip_batchnorm = skip_batchnorm, **kwargs)
+    model = ResNet(block, layers, use_linear_modules_only=use_linear_modules_only, k=k,**kwargs)
 
     if weights is not None:
         model.load_state_dict(weights.get_state_dict(progress=progress))
@@ -362,9 +329,9 @@ def build_resnet(
     return model
 
 @handle_legacy_interface(weights=("pretrained", ResNet18_Weights.IMAGENET1K_V1))
-def resnet18(*, weights, use_linear_modules=False, skip_batchnorm=True):
+def resnet18(*, weights, k=64, use_linear_modules=False):
 
     weights = ResNet18_Weights.verify(weights)
-    model = build_resnet(BasicBlock, [2, 2, 2, 2], weights=weights, progress=True, use_linear_modules_only=use_linear_modules, skip_batchnorm = skip_batchnorm)
+    model = build_resnet(BasicBlock, [2, 2, 2, 2], weights=weights, progress=True, use_linear_modules_only=use_linear_modules, k=k)
 
     return model
