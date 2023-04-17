@@ -223,12 +223,12 @@ class ResNet(nn.Module):
           self.use_linear_modules_only = False
           self.relu = nn.ReLU(inplace=True)
           self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
+        self.layer1 = self._make_layer(block, k, layers[0])
+        self.layer2 = self._make_layer(block, 2*k, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
+        self.layer3 = self._make_layer(block, 4*k, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
+        self.layer4 = self._make_layer(block, 8*k, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.Linear(8*k * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -315,13 +315,14 @@ def build_resnet(
     weights: Optional[WeightsEnum],
     progress: bool,
     use_linear_modules_only: bool = False,
-    k=64,
+    k: int = 64,
+    num_classes: int = 1000,
     **kwargs: Any,
 ) -> ResNet:
     if weights is not None:
         _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
 
-    model = ResNet(block, layers, use_linear_modules_only=use_linear_modules_only, k=k,**kwargs)
+    model = ResNet(block, layers, num_classes = num_classes, use_linear_modules_only=use_linear_modules_only, k=k, **kwargs)
 
     if weights is not None:
         model.load_state_dict(weights.get_state_dict(progress=progress))
@@ -329,9 +330,9 @@ def build_resnet(
     return model
 
 @handle_legacy_interface(weights=("pretrained", ResNet18_Weights.IMAGENET1K_V1))
-def resnet18(*, weights, k=64, use_linear_modules=False):
+def resnet18(*, weights, k=64, num_classes=1000, use_linear_modules=False):
 
     weights = ResNet18_Weights.verify(weights)
-    model = build_resnet(BasicBlock, [2, 2, 2, 2], weights=weights, progress=True, use_linear_modules_only=use_linear_modules, k=k)
+    model = build_resnet(BasicBlock, [2, 2, 2, 2], weights=weights, progress=True, use_linear_modules_only=use_linear_modules, k=k, num_classes = num_classes)
 
     return model
