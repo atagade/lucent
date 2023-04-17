@@ -306,8 +306,8 @@ class ResNet(nn.Module):
 
         return x
 
-    def forward(self, x: Tensor, layer = None) -> Tensor:
-        return self._forward_impl(x, layer)
+    def forward(self, x: Tensor) -> Tensor:
+        return self._forward_impl(x)
 
 def build_resnet(
     block: Type[Union[BasicBlock, Bottleneck]],
