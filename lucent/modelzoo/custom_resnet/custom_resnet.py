@@ -321,8 +321,9 @@ def build_resnet(
 ) -> ResNet:
     if weights is not None:
         _ovewrite_named_param(kwargs, "num_classes", len(weights.meta["categories"]))
-
-    model = ResNet(block, layers, num_classes = num_classes, use_linear_modules_only=use_linear_modules_only, k=k, **kwargs)
+        model = ResNet(block, layers, use_linear_modules_only=use_linear_modules_only, k=k, **kwargs)
+    else:
+        model = ResNet(block, layers, num_classes=num_classes, use_linear_modules_only=use_linear_modules_only, k=k, **kwargs)
 
     if weights is not None:
         model.load_state_dict(weights.get_state_dict(progress=progress))
@@ -335,6 +336,6 @@ def resnet18(*, weights, k=64, num_classes=1000, use_linear_modules=False):
     if weights == 'pretrained':
         weights = ResNet18_Weights.IMAGENET1K_V1
     weights = ResNet18_Weights.verify(weights)
-    model = build_resnet(BasicBlock, [2, 2, 2, 2], weights=weights, progress=True, use_linear_modules_only=use_linear_modules, k=k, num_classes = num_classes)
+    model = build_resnet(BasicBlock, [2, 2, 2, 2], weights=weights, progress=True, use_linear_modules_only=use_linear_modules, k=k, num_classes=num_classes)
 
     return model
