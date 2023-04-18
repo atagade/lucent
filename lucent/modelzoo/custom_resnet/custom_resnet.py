@@ -329,9 +329,11 @@ def build_resnet(
 
     return model
 
-@handle_legacy_interface(weights=("pretrained", ResNet18_Weights.IMAGENET1K_V1))
+
 def resnet18(*, weights, k=64, num_classes=1000, use_linear_modules=False):
 
+    if weights == 'pretrained':
+        weights = ResNet18_Weights.IMAGENET1K_V1
     weights = ResNet18_Weights.verify(weights)
     model = build_resnet(BasicBlock, [2, 2, 2, 2], weights=weights, progress=True, use_linear_modules_only=use_linear_modules, k=k, num_classes = num_classes)
 
